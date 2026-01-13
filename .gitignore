@@ -41,6 +41,14 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

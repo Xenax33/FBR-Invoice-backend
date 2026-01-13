@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                          String     @id @default(uuid())
+  name                        String
+  email                       String     @unique
+  businessName                String     @map("business_name")
+  province                    String
+  address                     String
+  ntncnic                     String     @unique @map("ntn_cnic")
+  role                        Role       @default(USER)
+  password                    String
+  postInvoiceTokenTest        String?    @map("post_invoice_token_test")
+  validateInvoiceTokenTest    String?    @map("validate_invoice_token_test")
+  postInvoiceToken            String?    @map("post_invoice_token")
+  validateInvoiceToken        String?    @map("validate_invoice_token")
+  isActive                    Boolean    @default(true) @map("is_active")
+  createdAt                   DateTime   @default(now()) @map("created_at")
+  updatedAt                   DateTime   @updatedAt @map("updated_at")
+  
+  // Relations
+  scenarios                   Scenario[]
+  products                    Product[]
+  refreshTokens               RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model HsCode {
+  id          String   @id @default(uuid())
+  hsCode      String   @unique @map("hs_code")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("hs_codes")
+}
+
+model Scenario {
+  id                  String   @id @default(uuid())
+  scenarioCode        String   @map("scenario_code")
+  scenarioDescription String   @map("scenario_description")
+  userId              String   @map("user_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioCode])
+  @@map("scenarios")
+}
+
+model Product {
+  id                        String   @id @default(uuid())
+  userId                    String   @map("user_id")
+  productDescription        String   @map("product_description")
+  value                     Decimal  @db.Decimal(15, 2)
+  valueExcludingSalesTax    Decimal  @map("value_excluding_sales_tax") @db.Decimal(15, 2)
+  retailPrice               Decimal  @map("retail_price") @db.Decimal(15, 2)
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
