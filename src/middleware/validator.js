@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import { AppError } from '../utils/errors.js';
+import { ValidationError } from '../utils/errors.js';
 
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -10,10 +10,7 @@ export const validate = (req, res, next) => {
       message: error.msg
     }));
     
-    throw new AppError(
-      JSON.stringify(errorMessages),
-      400
-    );
+    throw new ValidationError(errorMessages);
   }
   
   next();

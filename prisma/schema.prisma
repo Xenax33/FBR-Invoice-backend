@@ -32,6 +32,9 @@ model User {
   scenarios                   Scenario[]
   products                    Product[]
   refreshTokens               RefreshToken[]
+  invoices                    Invoice[]
+  buyers                      Buyer[]
+  hsCodes                     HsCode[]
 
   @@map("users")
 }
@@ -49,27 +52,65 @@ model RefreshToken {
 }
 
 model HsCode {
-  id          String   @id @default(uuid())
-  hsCode      String   @unique @map("hs_code")
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  hsCode       String        @map("hs_code")
+  description  String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceItems InvoiceItem[]
 
+  @@unique([userId, hsCode])
   @@map("hs_codes")
 }
 
 model Scenario {
-  id                  String   @id @default(uuid())
-  scenarioCode        String   @map("scenario_code")
-  scenarioDescription String   @map("scenario_description")
-  userId              String   @map("user_id")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  scenarioCode        String    @map("scenario_code")
+  scenarioDescription String    @map("scenario_description")
+  userId              String    @map("user_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
   
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relations
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices            Invoice[]
 
   @@unique([userId, scenarioCode])
   @@map("scenarios")
+}
+
+model GlobalScenario {
+  id                  String    @id @default(uuid())
+  scenarioCode        String    @unique @map("scenario_code")
+  scenarioDescription String    @map("scenario_description")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("global_scenarios")
+}
+
+
+model Buyer {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  ntncnic               String    @map("ntn_cnic")
+  businessName          String    @map("business_name")
+  province              String
+  address               String
+  registrationType      String    @map("registration_type")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices              Invoice[]
+
+  @@unique([userId, ntncnic])
+  @@map("buyers")
 }
 
 model Product {
@@ -85,6 +126,58 @@ model Product {
   user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("products")
+}
+
+model Invoice {
+  id                      String        @id @default(uuid())
+  userId                  String        @map("user_id")
+  buyerId                 String        @map("buyer_id")
+  scenarioId              String        @map("scenario_id")
+  invoiceType             String        @map("invoice_type")
+  invoiceDate             DateTime      @map("invoice_date") @db.Date
+  invoiceRefNo            String?       @map("invoice_ref_no")
+  fbrInvoiceNumber        String?       @map("fbr_invoice_number")
+  fbrResponse             Json?         @map("fbr_response")
+  isTestEnvironment       Boolean       @default(true) @map("is_test_environment")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyer                   Buyer         @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  scenario                Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  items                   InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id                            String          @id @default(uuid())
+  invoiceId                     String          @map("invoice_id")
+  hsCodeId                      String          @map("hs_code_id")
+  productDescription            String          @map("product_description")
+  rate                          String
+  uoM                           String          @map("unit_of_measurement")
+  quantity                      Decimal         @db.Decimal(15, 2)
+  totalValues                   Decimal         @map("total_values") @db.Decimal(15, 2)
+  valueSalesExcludingST         Decimal         @map("value_sales_excluding_st") @db.Decimal(15, 2)
+  fixedNotifiedValueOrRetailPrice Decimal       @map("fixed_notified_value_or_retail_price") @db.Decimal(15, 2)
+  salesTaxApplicable            Decimal         @map("sales_tax_applicable") @db.Decimal(15, 2)
+  salesTaxWithheldAtSource      Decimal         @map("sales_tax_withheld_at_source") @db.Decimal(15, 2)
+  extraTax                      String?         @map("extra_tax")
+  furtherTax                    Decimal         @map("further_tax") @db.Decimal(15, 2)
+  sroScheduleNo                 String?         @map("sro_schedule_no")
+  fedPayable                    Decimal         @map("fed_payable") @db.Decimal(15, 2)
+  discount                      Decimal         @db.Decimal(15, 2)
+  sroItemSerialNo               String?         @map("sro_item_serial_no")
+  createdAt                     DateTime        @default(now()) @map("created_at")
+  updatedAt                     DateTime        @updatedAt @map("updated_at")
+  
+  // Relations
+  invoice                       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  hsCode                        HsCode          @relation(fields: [hsCodeId], references: [id], onDelete: Restrict)
+
+  @@map("invoice_items")
 }
 
 enum Role {
