@@ -13,21 +13,10 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 
 const app = express();
 
-// CORS configuration
+// CORS configuration - Allow all origins (temporary for testing)
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = config.clientUrl.split(',').map(url => url.trim());
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || config.nodeEnv === 'development') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+  origin: '*',
+  credentials: false, // Must be false when origin is '*'
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
