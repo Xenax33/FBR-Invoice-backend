@@ -29,7 +29,7 @@ model User {
   updatedAt                   DateTime   @updatedAt @map("updated_at")
   
   // Relations
-  scenarios                   Scenario[]
+  userScenarios               UserScenario[]
   products                    Product[]
   refreshTokens               RefreshToken[]
   invoices                    Invoice[]
@@ -67,30 +67,33 @@ model HsCode {
   @@map("hs_codes")
 }
 
-model Scenario {
-  id                  String    @id @default(uuid())
-  scenarioCode        String    @map("scenario_code")
-  scenarioDescription String    @map("scenario_description")
-  userId              String    @map("user_id")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+model GlobalScenario {
+  id                  String          @id @default(uuid())
+  scenarioCode        String          @unique @map("scenario_code")
+  scenarioDescription String          @map("scenario_description")
+  salesType           String?         @map("sales_type")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
   
   // Relations
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userScenarios       UserScenario[]
   invoices            Invoice[]
 
-  @@unique([userId, scenarioCode])
-  @@map("scenarios")
+  @@map("global_scenarios")
 }
 
-model GlobalScenario {
-  id                  String    @id @default(uuid())
-  scenarioCode        String    @unique @map("scenario_code")
-  scenarioDescription String    @map("scenario_description")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+model UserScenario {
+  id         String         @id @default(uuid())
+  userId     String         @map("user_id")
+  scenarioId String         @map("scenario_id")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario   GlobalScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 
-  @@map("global_scenarios")
+  @@unique([userId, scenarioId])
+  @@map("user_scenarios")
 }
 
 
@@ -143,9 +146,9 @@ model Invoice {
   updatedAt               DateTime      @updatedAt @map("updated_at")
   
   // Relations
-  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  buyer                   Buyer         @relation(fields: [buyerId], references: [id], onDelete: Restrict)
-  scenario                Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  user                    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyer                   Buyer          @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  scenario                GlobalScenario @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
   items                   InvoiceItem[]
 
   @@map("invoices")

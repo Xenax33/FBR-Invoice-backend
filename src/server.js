@@ -6,11 +6,10 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import invoiceRoutes from './routes/invoiceRoutes.js';
-import buyerRoutes from './routes/buyerRoutes.js';
-import hsCodeRoutes from './routes/hsCodeRoutes.js';
 import scenarioRoutes from './routes/scenarioRoutes.js';
-import scenarioAdminRoutes from './routes/scenarioAdminRoutes.js';
+import hsCodeRoutes from './routes/hsCodeRoutes.js';
+import buyerRoutes from './routes/buyerRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
 
 const app = express();
 
@@ -39,11 +38,10 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/invoices', invoiceRoutes);
-app.use('/api/v1/buyers', buyerRoutes);
-app.use('/api/v1/hs-codes', hsCodeRoutes);
 app.use('/api/v1/scenarios', scenarioRoutes);
-app.use('/api/v1/admin/scenarios', scenarioAdminRoutes);
+app.use('/api/v1/hs-codes', hsCodeRoutes);
+app.use('/api/v1/buyers', buyerRoutes);
+app.use('/api/v1/invoices', invoiceRoutes);
 
 // 404 handler
 app.all('*', (req, res) => {

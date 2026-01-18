@@ -2,7 +2,7 @@
 
 **Base URL**: `http://localhost:5000/api/v1`
 
-**Last Updated**: January 17, 2026
+**Last Updated**: January 18, 2026
 
 ---
 
@@ -21,6 +21,16 @@
   - [Delete User](#5-delete-user)
   - [Toggle User Status](#6-toggle-user-status)
   - [Update User Password](#7-update-user-password)
+- [Scenario Management APIs](#scenario-management-apis)
+  - [Admin: Create Global Scenario](#1-admin-create-global-scenario)
+  - [Admin: Get All Global Scenarios](#2-admin-get-all-global-scenarios)
+  - [Admin: Get Global Scenario by ID](#3-admin-get-global-scenario-by-id)
+  - [Admin: Update Global Scenario](#4-admin-update-global-scenario)
+  - [Admin: Delete Global Scenario](#5-admin-delete-global-scenario)
+  - [Admin: Assign Scenario to User](#6-admin-assign-scenario-to-user)
+  - [Admin: Unassign Scenario from User](#7-admin-unassign-scenario-from-user)
+  - [Admin: Get User's Assigned Scenarios](#8-admin-get-users-assigned-scenarios)
+  - [User: Get My Scenarios](#9-user-get-my-scenarios)
 - [Buyer Management APIs](#buyer-management-apis)
   - [Create Buyer](#1-create-buyer)
   - [Get All Buyers](#2-get-all-buyers)
@@ -33,13 +43,6 @@
   - [Get HS Code by ID](#3-get-hs-code-by-id)
   - [Update HS Code](#4-update-hs-code)
   - [Delete HS Code](#5-delete-hs-code)
-- [Scenario Management APIs](#scenario-management-apis)
-  - [Create Scenario](#1-create-scenario)
-  - [Get All Scenarios](#2-get-all-scenarios)
-  - [Get Scenario by ID](#3-get-scenario-by-id)
-  - [Update Scenario](#4-update-scenario)
-  - [Delete Scenario](#5-delete-scenario)
-  - [Admin Scenario Management APIs](#admin-scenario-management-apis)
 - [Invoice Management APIs](#invoice-management-apis)
   - [Post Invoice to FBR](#1-post-invoice-to-fbr)
   - [Validate Invoice with FBR](#2-validate-invoice-with-fbr)
@@ -1075,6 +1078,530 @@ curl -X PATCH "http://localhost:5000/api/v1/users/660e8400-e29b-41d4-a716-446655
 
 ---
 
+## Scenario Management APIs
+
+The scenario system allows admins to create global scenarios and assign them to users. Users can only view their assigned scenarios.
+
+### System Overview
+- **Global Scenarios**: Managed by admin (CRUD operations)
+- **User Assignments**: Admin assigns global scenarios to specific users
+- **User Access**: Users can only view scenarios assigned to them
+
+---
+
+### 1. Admin: Create Global Scenario
+
+Create a new global scenario (Admin only).
+
+**Endpoint**: `POST /scenarios/global`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+**Request Body**:
+```json
+{
+  "scenarioCode": "SCEN001",
+  "scenarioDescription": "Standard sale of goods"
+}
+```
+
+**cURL Request**:
+```bash
+curl -X POST http://localhost:5000/api/v1/scenarios/global \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"scenarioCode":"SCEN001","scenarioDescription":"Standard sale of goods"}'
+```
+
+**Success Response (201 Created)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenario": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "scenarioCode": "SCEN001",
+      "scenarioDescription": "Standard sale of goods",
+      "createdAt": "2026-01-18T14:30:00.000Z",
+      "updatedAt": "2026-01-18T14:30:00.000Z"
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+**400 Bad Request** - Duplicate Scenario Code:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400
+  },
+  "message": "Scenario code already exists"
+}
+```
+
+---
+
+### 2. Admin: Get All Global Scenarios
+
+Get a paginated list of all global scenarios (Admin only).
+
+**Endpoint**: `GET /scenarios/global`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+```
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 50)
+- `search` (optional): Search in scenario code or description
+
+**cURL Request**:
+```bash
+# Get all scenarios
+curl -X GET "http://localhost:5000/api/v1/scenarios/global" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"
+
+# With search
+curl -X GET "http://localhost:5000/api/v1/scenarios/global?search=sale" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenarios": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "scenarioCode": "SCEN001",
+        "scenarioDescription": "Standard sale of goods",
+        "createdAt": "2026-01-18T14:30:00.000Z",
+        "updatedAt": "2026-01-18T14:30:00.000Z"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "scenarioCode": "SCEN002",
+        "scenarioDescription": "Export of goods",
+        "createdAt": "2026-01-18T14:35:00.000Z",
+        "updatedAt": "2026-01-18T14:35:00.000Z"
+      }
+    ],
+    "pagination": {
+      "total": 2,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+---
+
+### 3. Admin: Get Global Scenario by ID
+
+Get details of a specific global scenario (Admin only).
+
+**Endpoint**: `GET /scenarios/global/:id`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+```
+
+**URL Parameters**:
+- `id`: Scenario ID (UUID)
+
+**cURL Request**:
+```bash
+curl -X GET "http://localhost:5000/api/v1/scenarios/global/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenario": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "scenarioCode": "SCEN001",
+      "scenarioDescription": "Standard sale of goods",
+      "createdAt": "2026-01-18T14:30:00.000Z",
+      "updatedAt": "2026-01-18T14:30:00.000Z"
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+**404 Not Found**:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 404
+  },
+  "message": "Scenario not found"
+}
+```
+
+---
+
+### 4. Admin: Update Global Scenario
+
+Update a global scenario (Admin only).
+
+**Endpoint**: `PATCH /scenarios/global/:id`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+**URL Parameters**:
+- `id`: Scenario ID (UUID)
+
+**Request Body** (all fields optional):
+```json
+{
+  "scenarioCode": "SCEN001_UPDATED",
+  "scenarioDescription": "Updated description for standard sale"
+}
+```
+
+**cURL Request**:
+```bash
+curl -X PATCH "http://localhost:5000/api/v1/scenarios/global/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"scenarioDescription":"Updated description for standard sale"}'
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenario": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "scenarioCode": "SCEN001",
+      "scenarioDescription": "Updated description for standard sale",
+      "createdAt": "2026-01-18T14:30:00.000Z",
+      "updatedAt": "2026-01-18T15:00:00.000Z"
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+**400 Bad Request** - Scenario Code In Use:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400
+  },
+  "message": "Scenario code already in use"
+}
+```
+
+---
+
+### 5. Admin: Delete Global Scenario
+
+Delete a global scenario (Admin only). Cannot delete if assigned to users.
+
+**Endpoint**: `DELETE /scenarios/global/:id`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+```
+
+**URL Parameters**:
+- `id`: Scenario ID (UUID)
+
+**cURL Request**:
+```bash
+curl -X DELETE "http://localhost:5000/api/v1/scenarios/global/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"
+```
+
+**Success Response (204 No Content)**:
+```json
+{
+  "status": "success",
+  "data": null
+}
+```
+
+**Error Responses**:
+
+**400 Bad Request** - Scenario Assigned to Users:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400
+  },
+  "message": "Cannot delete scenario. It is assigned to 5 user(s). Please unassign it first."
+}
+```
+
+---
+
+### 6. Admin: Assign Scenario to User
+
+Assign a global scenario to a user (Admin only).
+
+**Endpoint**: `POST /scenarios/assign`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+**Request Body**:
+```json
+{
+  "userId": "660e8400-e29b-41d4-a716-446655440001",
+  "scenarioId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**cURL Request**:
+```bash
+curl -X POST http://localhost:5000/api/v1/scenarios/assign \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"660e8400-e29b-41d4-a716-446655440001","scenarioId":"550e8400-e29b-41d4-a716-446655440000"}'
+```
+
+**Success Response (201 Created)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "assignment": {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "userId": "660e8400-e29b-41d4-a716-446655440001",
+      "scenarioId": "550e8400-e29b-41d4-a716-446655440000",
+      "createdAt": "2026-01-18T15:30:00.000Z",
+      "scenario": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "scenarioCode": "SCEN001",
+        "scenarioDescription": "Standard sale of goods",
+        "createdAt": "2026-01-18T14:30:00.000Z",
+        "updatedAt": "2026-01-18T14:30:00.000Z"
+      },
+      "user": {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "John Doe",
+        "email": "john.doe@example.com"
+      }
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+**400 Bad Request** - Already Assigned:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400
+  },
+  "message": "Scenario already assigned to this user"
+}
+```
+
+**404 Not Found** - User or Scenario Not Found:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 404
+  },
+  "message": "User not found"
+}
+```
+
+---
+
+### 7. Admin: Unassign Scenario from User
+
+Remove a scenario assignment from a user (Admin only).
+
+**Endpoint**: `POST /scenarios/unassign`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+**Request Body**:
+```json
+{
+  "userId": "660e8400-e29b-41d4-a716-446655440001",
+  "scenarioId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**cURL Request**:
+```bash
+curl -X POST http://localhost:5000/api/v1/scenarios/unassign \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"660e8400-e29b-41d4-a716-446655440001","scenarioId":"550e8400-e29b-41d4-a716-446655440000"}'
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "message": "Scenario unassigned successfully"
+}
+```
+
+**Error Responses**:
+
+**404 Not Found** - Assignment Not Found:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 404
+  },
+  "message": "Scenario assignment not found"
+}
+```
+
+---
+
+### 8. Admin: Get User's Assigned Scenarios
+
+Get all scenarios assigned to a specific user (Admin only).
+
+**Endpoint**: `GET /scenarios/user/:userId`
+
+**Headers**:
+```
+Authorization: Bearer <admin-access-token>
+```
+
+**URL Parameters**:
+- `userId`: User ID (UUID)
+
+**cURL Request**:
+```bash
+curl -X GET "http://localhost:5000/api/v1/scenarios/user/660e8400-e29b-41d4-a716-446655440001" \
+  -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenarios": [
+      {
+        "assignmentId": "770e8400-e29b-41d4-a716-446655440002",
+        "scenarioId": "550e8400-e29b-41d4-a716-446655440000",
+        "scenarioCode": "SCEN001",
+        "scenarioDescription": "Standard sale of goods",
+        "assignedAt": "2026-01-18T15:30:00.000Z"
+      },
+      {
+        "assignmentId": "880e8400-e29b-41d4-a716-446655440003",
+        "scenarioId": "660e8400-e29b-41d4-a716-446655440001",
+        "scenarioCode": "SCEN002",
+        "scenarioDescription": "Export of goods",
+        "assignedAt": "2026-01-18T15:35:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses**:
+
+**404 Not Found** - User Not Found:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 404
+  },
+  "message": "User not found"
+}
+```
+
+---
+
+### 9. User: Get My Scenarios
+
+Get all scenarios assigned to the authenticated user.
+
+**Endpoint**: `GET /scenarios/my-scenarios`
+
+**Headers**:
+```
+Authorization: Bearer <user-access-token>
+```
+
+**cURL Request**:
+```bash
+curl -X GET http://localhost:5000/api/v1/scenarios/my-scenarios \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Success Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "scenarios": [
+      {
+        "assignmentId": "770e8400-e29b-41d4-a716-446655440002",
+        "scenarioId": "550e8400-e29b-41d4-a716-446655440000",
+        "scenarioCode": "SCEN001",
+        "scenarioDescription": "Standard sale of goods",
+        "assignedAt": "2026-01-18T15:30:00.000Z"
+      },
+      {
+        "assignmentId": "880e8400-e29b-41d4-a716-446655440003",
+        "scenarioId": "660e8400-e29b-41d4-a716-446655440001",
+        "scenarioCode": "SCEN002",
+        "scenarioDescription": "Export of goods",
+        "assignedAt": "2026-01-18T15:35:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**Note**: Users can only see scenarios that have been assigned to them by an admin.
+
+---
+
 ## Buyer Management APIs
 
 All buyer endpoints require authentication. Users can only manage their own buyers.
@@ -1627,373 +2154,6 @@ curl -X DELETE "http://localhost:5000/api/v1/hs-codes/aa0e8400-e29b-41d4-a716-44
 ```
 
 ---
-
-## Scenario Management APIs
-
-All scenario endpoints require authentication.
-Users can view their assigned scenarios.
-Admins manage global scenarios and assignments.
-
-**Required Header**:
-```
-Authorization: Bearer <access-token>
-```
-
----
-
-### 1. Create Scenario (Admin)
-
-Create a new scenario for the authenticated user.
-
-**Endpoint**: `POST /scenarios` (ADMIN)
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "scenarioCode": "SN001",
-  "scenarioDescription": "Standard retail sale with 17% tax"
-}
-```
-
-**Field Descriptions**:
-- `scenarioCode`: Unique scenario code (required, 2-50 characters)
-- `scenarioDescription`: Description of the scenario (required, 5-500 characters)
-
-**cURL Request**:
-```bash
-curl -X POST http://localhost:5000/api/v1/scenarios \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "scenarioCode": "SN001",
-    "scenarioDescription": "Standard retail sale with 17% tax"
-  }'
-```
-
-**Success Response (201 Created)**:
-```json
-{
-  "status": "success",
-  "data": {
-    "scenario": {
-      "id": "cc0e8400-e29b-41d4-a716-446655440001",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "scenarioCode": "SN001",
-      "scenarioDescription": "Standard retail sale with 17% tax",
-      "createdAt": "2026-01-17T10:00:00.000Z",
-      "updatedAt": "2026-01-17T10:00:00.000Z"
-    }
-  }
-}
-```
-
-**Error Responses**:
-
-**400 Bad Request** - Duplicate Scenario:
-```json
-{
-  "status": "fail",
-  "message": "Scenario with this code already exists"
-}
-```
-
-**401 Unauthorized**:
-```json
-{
-  "status": "fail",
-  "message": "Authentication token is required"
-}
-```
-
----
-
-### 2. Get All Scenarios (User)
-
-Get a paginated list of scenarios for the authenticated user.
-
-**Endpoint**: `GET /scenarios`
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-```
-
-**Query Parameters**:
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Items per page (default: 10)
-- `search` (optional): Search in scenario code or description
-
-**cURL Request**:
-```bash
-# Get all scenarios
-curl -X GET "http://localhost:5000/api/v1/scenarios" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-
-# With search
-curl -X GET "http://localhost:5000/api/v1/scenarios?search=retail" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Success Response (200 OK)**:
-```json
-{
-  "status": "success",
-  "data": {
-    "scenarios": [
-      {
-        "id": "cc0e8400-e29b-41d4-a716-446655440001",
-        "userId": "550e8400-e29b-41d4-a716-446655440000",
-        "scenarioCode": "SN001",
-        "scenarioDescription": "Standard retail sale with 17% tax",
-        "createdAt": "2026-01-17T10:00:00.000Z",
-        "updatedAt": "2026-01-17T10:00:00.000Z"
-      }
-    ],
-    "pagination": {
-      "total": 1,
-      "page": 1,
-      "limit": 10,
-      "totalPages": 1
-    }
-  }
-}
-```
-
----
-
-### 3. Get Scenario by ID (User)
-
-Get detailed information about a specific scenario.
-
-**Endpoint**: `GET /scenarios/:id`
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-```
-
-**cURL Request**:
-```bash
-curl -X GET "http://localhost:5000/api/v1/scenarios/cc0e8400-e29b-41d4-a716-446655440001" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Success Response (200 OK)**:
-```json
-{
-  "status": "success",
-  "data": {
-    "scenario": {
-      "id": "cc0e8400-e29b-41d4-a716-446655440001",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "scenarioCode": "SN001",
-      "scenarioDescription": "Standard retail sale with 17% tax",
-      "createdAt": "2026-01-17T10:00:00.000Z",
-      "updatedAt": "2026-01-17T10:00:00.000Z"
-    }
-  }
-}
-```
-
-**404 Not Found**:
-```json
-{
-  "status": "fail",
-  "message": "Scenario not found"
-}
-```
-
-### 4. Get Scenario Options (User)
-
-Returns UI-friendly list for dropdowns.
-
-**Endpoint**: `GET /scenarios/list`
-
-**Success Response (200 OK)**:
-```json
-{
-  "status": "success",
-  "data": {
-    "options": [
-      { "code": "SN001", "description": "Goods at standard rate to registered buyers" },
-      { "code": "SN002", "description": "Goods at standard rate to unregistered buyers" }
-    ]
-  }
-}
-```
-
----
-
-### 5. Update Scenario (Admin)
-
-Update scenario information.
-
-**Endpoint**: `PATCH /scenarios/:id` (ADMIN)
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-**Request Body** (all fields optional):
-```json
-{
-  "scenarioCode": "SN002",
-  "scenarioDescription": "Updated description for retail sales"
-}
-```
-
-**cURL Request**:
-```bash
-curl -X PATCH "http://localhost:5000/api/v1/scenarios/cc0e8400-e29b-41d4-a716-446655440001" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"scenarioDescription":"Updated description for retail sales"}'
-```
-
-**Success Response (200 OK)**:
-```json
-{
-  "status": "success",
-  "data": {
-    "scenario": {
-      "id": "cc0e8400-e29b-41d4-a716-446655440001",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "scenarioCode": "SN002",
-      "scenarioDescription": "Updated description for retail sales",
-      "createdAt": "2026-01-17T10:00:00.000Z",
-      "updatedAt": "2026-01-17T11:00:00.000Z"
-    }
-  }
-}
-```
-
----
-
-### 6. Delete Scenario (Admin)
-
-Delete a scenario (only if not used in any invoices).
-
-**Endpoint**: `DELETE /scenarios/:id` (ADMIN)
----
-
-## Admin Scenario Management APIs
-
-Admins can manage the global catalog of scenarios and assign them to users.
-
-### 1. Create Global Scenario
-
-**Endpoint**: `POST /admin/scenarios/global`
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "scenarioCode": "SN001",
-  "scenarioDescription": "Goods at standard rate to registered buyers"
-}
-```
-
-### 2. List Global Scenarios
-
-**Endpoint**: `GET /admin/scenarios/global`
-
-### 3. Update Global Scenario
-
-**Endpoint**: `PATCH /admin/scenarios/global/:id`
-
-### 4. Delete Global Scenario
-
-**Endpoint**: `DELETE /admin/scenarios/global/:id`
-
-Blocks deletion when assigned to any user.
-
-### 5. Assign Scenario to User
-
-**Endpoint**: `POST /admin/scenarios/assign`
-
-**Request Body**:
-```json
-{
-  "userId": "<UUID>",
-  "scenarioId": "<GlobalScenario UUID>"
-}
-```
-
-Creates a per-user scenario entry; invoices use the assigned scenario.
-
-### 6. Bulk Assign Scenarios to User
-
-**Endpoint**: `POST /admin/scenarios/assign/bulk`
-
-**Request Body** (provide either `scenarioIds` or `scenarioCodes`):
-```json
-{
-  "userId": "<UUID>",
-  "scenarioIds": ["<GlobalScenario UUID>", "<GlobalScenario UUID>"]
-}
-```
-Or
-```json
-{
-  "userId": "<UUID>",
-  "scenarioCodes": ["SN001", "SN002", "SN003"]
-}
-```
-
-Assigns multiple global scenarios to the user in one call.
-
-### 7. Unassign Scenario from User
-
-**Endpoint**: `DELETE /admin/scenarios/assign`
-
-Blocks unassign when scenario is used in invoices.
-
-### 8. List User Assignments
-
-**Endpoint**: `GET /admin/scenarios/users/:userId`
-
-**Headers**:
-```
-Authorization: Bearer <access-token>
-```
-
-**cURL Request**:
-```bash
-curl -X DELETE "http://localhost:5000/api/v1/scenarios/cc0e8400-e29b-41d4-a716-446655440001" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Success Response (204 No Content)**:
-```json
-{
-  "status": "success",
-  "data": null
-}
-```
-
-**400 Bad Request** - Scenario In Use:
-```json
-{
-  "status": "fail",
-  "message": "Cannot delete scenario that is used in invoices"
-}
-```
-
----
-
 
 ## Invoice Management APIs
 

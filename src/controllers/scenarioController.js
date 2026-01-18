@@ -1,249 +1,322 @@
 import { PrismaClient } from '@prisma/client';
-import { AppError } from '../utils/errors.js';
+import { AppError, catchAsync } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
 
-/**
- * Create a new Scenario
- * @route POST /api/v1/scenarios
- */
-export const createScenario = async (req, res, next) => {
-  try {
-    const userId = req.user.userId;
-    const { scenarioCode, scenarioDescription } = req.body;
+// Admin APIs - Manage Global Scenarios
 
-    // Check if scenario code already exists for this user
-    const existingScenario = await prisma.scenario.findFirst({
-      where: {
-        userId,
-        scenarioCode,
-      },
-    });
+export const createGlobalScenario = catchAsync(async (req, res, next) => {
+  const { scenarioCode, scenarioDescription } = req.body;
 
-    if (existingScenario) {
-      throw new AppError('Scenario with this code already exists', 400);
-    }
+  // Check if scenario code already exists
+  const existingScenario = await prisma.globalScenario.findUnique({
+    where: { scenarioCode },
+  });
 
-    const newScenario = await prisma.scenario.create({
-      data: {
-        userId,
-        scenarioCode,
-        scenarioDescription,
-      },
-    });
-
-    res.status(201).json({
-      status: 'success',
-      data: {
-        scenario: newScenario,
-      },
-    });
-  } catch (error) {
-    next(error);
+  if (existingScenario) {
+    throw new AppError('Scenario code already exists', 400);
   }
-};
 
-/**
- * Get all scenarios for the authenticated user
- * @route GET /api/v1/scenarios
- */
-export const getAllScenarios = async (req, res, next) => {
-  try {
-    const userId = req.user.userId;
-    const { page = 1, limit = 10, search } = req.query;
+  const scenario = await prisma.globalScenario.create({
+    data: {
+      scenarioCode,
+      scenarioDescription,
+    },
+  });
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+  res.status(201).json({
+    status: 'success',
+    data: {
+      scenario,
+    },
+  });
+});
 
-    // Build filter conditions
-    const where = {
+export const getAllGlobalScenarios = catchAsync(async (req, res, next) => {
+  const { page = 1, limit = 50, search } = req.query;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
+
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      { scenarioCode: { contains: search, mode: 'insensitive' } },
+      { scenarioDescription: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const [scenarios, total] = await Promise.all([
+    prisma.globalScenario.findMany({
+      where,
+      skip,
+      take,
+      orderBy: {
+        scenarioCode: 'asc',
+      },
+    }),
+    prisma.globalScenario.count({ where }),
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      scenarios,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+    },
+  });
+});
+
+export const getGlobalScenarioById = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const scenario = await prisma.globalScenario.findUnique({
+    where: { id },
+  });
+
+  if (!scenario) {
+    throw new AppError('Scenario not found', 404);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      scenario,
+    },
+  });
+});
+
+export const updateGlobalScenario = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { scenarioCode, scenarioDescription } = req.body;
+
+  const existingScenario = await prisma.globalScenario.findUnique({
+    where: { id },
+  });
+
+  if (!existingScenario) {
+    throw new AppError('Scenario not found', 404);
+  }
+
+  // Check if new scenario code is already taken by another scenario
+  if (scenarioCode && scenarioCode !== existingScenario.scenarioCode) {
+    const duplicateScenario = await prisma.globalScenario.findUnique({
+      where: { scenarioCode },
+    });
+
+    if (duplicateScenario) {
+      throw new AppError('Scenario code already in use', 400);
+    }
+  }
+
+  const scenario = await prisma.globalScenario.update({
+    where: { id },
+    data: {
+      ...(scenarioCode && { scenarioCode }),
+      ...(scenarioDescription && { scenarioDescription }),
+    },
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      scenario,
+    },
+  });
+});
+
+export const deleteGlobalScenario = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const scenario = await prisma.globalScenario.findUnique({
+    where: { id },
+    include: {
+      userScenarios: true,
+    },
+  });
+
+  if (!scenario) {
+    throw new AppError('Scenario not found', 404);
+  }
+
+  // Check if scenario is assigned to any users
+  if (scenario.userScenarios.length > 0) {
+    throw new AppError(
+      `Cannot delete scenario. It is assigned to ${scenario.userScenarios.length} user(s). Please unassign it first.`,
+      400
+    );
+  }
+
+  await prisma.globalScenario.delete({
+    where: { id },
+  });
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
+  });
+});
+
+// Admin APIs - Assign/Unassign Scenarios to Users
+
+export const assignScenarioToUser = catchAsync(async (req, res, next) => {
+  const { userId, scenarioId } = req.body;
+
+  // Check if user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Check if scenario exists
+  const scenario = await prisma.globalScenario.findUnique({
+    where: { id: scenarioId },
+  });
+
+  if (!scenario) {
+    throw new AppError('Scenario not found', 404);
+  }
+
+  // Check if already assigned
+  const existingAssignment = await prisma.userScenario.findUnique({
+    where: {
+      userId_scenarioId: {
+        userId,
+        scenarioId,
+      },
+    },
+  });
+
+  if (existingAssignment) {
+    throw new AppError('Scenario already assigned to this user', 400);
+  }
+
+  const assignment = await prisma.userScenario.create({
+    data: {
       userId,
-      ...(search && {
-        OR: [
-          { scenarioCode: { contains: search, mode: 'insensitive' } },
-          { scenarioDescription: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
-    };
-
-    // Get scenarios with pagination
-    const [scenarios, total] = await Promise.all([
-      prisma.scenario.findMany({
-        where,
-        skip,
-        take: parseInt(limit),
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prisma.scenario.count({ where }),
-    ]);
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        scenarios,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(total / parseInt(limit)),
+      scenarioId,
+    },
+    include: {
+      scenario: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
       },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+    },
+  });
 
-/**
- * Get assigned scenario options (code + description)
- * @route GET /api/v1/scenarios/list
- */
-export const getScenarioOptions = async (req, res, next) => {
-  try {
-    const userId = req.user.userId;
-    const scenarios = await prisma.scenario.findMany({
-      where: { userId },
-      select: { scenarioCode: true, scenarioDescription: true },
-      orderBy: { scenarioCode: 'asc' },
-    });
+  res.status(201).json({
+    status: 'success',
+    data: {
+      assignment,
+    },
+  });
+});
 
-    const options = scenarios.map((s) => ({ code: s.scenarioCode, description: s.scenarioDescription }));
-    res.status(200).json({ status: 'success', data: { options } });
-  } catch (error) {
-    next(error);
-  }
-};
+export const unassignScenarioFromUser = catchAsync(async (req, res, next) => {
+  const { userId, scenarioId } = req.body;
 
-/**
- * Get a specific scenario by ID
- * @route GET /api/v1/scenarios/:id
- */
-export const getScenarioById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    const scenario = await prisma.scenario.findFirst({
-      where: {
-        id,
+  const assignment = await prisma.userScenario.findUnique({
+    where: {
+      userId_scenarioId: {
         userId,
+        scenarioId,
       },
-    });
+    },
+  });
 
-    if (!scenario) {
-      throw new AppError('Scenario not found', 404);
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        scenario,
-      },
-    });
-  } catch (error) {
-    next(error);
+  if (!assignment) {
+    throw new AppError('Scenario assignment not found', 404);
   }
-};
 
-/**
- * Update a scenario
- * @route PATCH /api/v1/scenarios/:id
- */
-export const updateScenario = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-    const { scenarioCode, scenarioDescription } = req.body;
-
-    // Check if scenario exists and belongs to user
-    const existingScenario = await prisma.scenario.findFirst({
-      where: {
-        id,
+  await prisma.userScenario.delete({
+    where: {
+      userId_scenarioId: {
         userId,
+        scenarioId,
       },
-    });
+    },
+  });
 
-    if (!existingScenario) {
-      throw new AppError('Scenario not found', 404);
-    }
+  res.status(200).json({
+    status: 'success',
+    message: 'Scenario unassigned successfully',
+  });
+});
 
-    // If scenario code is being updated, check for duplicates
-    if (scenarioCode && scenarioCode !== existingScenario.scenarioCode) {
-      const duplicateScenario = await prisma.scenario.findFirst({
-        where: {
-          userId,
-          scenarioCode,
-          id: { not: id },
-        },
-      });
+export const getUserAssignedScenarios = catchAsync(async (req, res, next) => {
+  const { userId } = req.params;
 
-      if (duplicateScenario) {
-        throw new AppError('Scenario with this code already exists', 400);
-      }
-    }
+  // Check if user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
 
-    const updatedScenario = await prisma.scenario.update({
-      where: { id },
-      data: {
-        ...(scenarioCode && { scenarioCode }),
-        ...(scenarioDescription !== undefined && { scenarioDescription }),
-      },
-    });
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        scenario: updatedScenario,
-      },
-    });
-  } catch (error) {
-    next(error);
+  if (!user) {
+    throw new AppError('User not found', 404);
   }
-};
 
-/**
- * Delete a scenario
- * @route DELETE /api/v1/scenarios/:id
- */
-export const deleteScenario = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+  const assignments = await prisma.userScenario.findMany({
+    where: { userId },
+    include: {
+      scenario: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 
-    // Check if scenario exists and belongs to user
-    const scenario = await prisma.scenario.findFirst({
-      where: {
-        id,
-        userId,
-      },
-    });
+  res.status(200).json({
+    status: 'success',
+    data: {
+      scenarios: assignments.map((a) => ({
+        assignmentId: a.id,
+        scenarioId: a.scenario.id,
+        scenarioCode: a.scenario.scenarioCode,
+        scenarioDescription: a.scenario.scenarioDescription,
+        assignedAt: a.createdAt,
+      })),
+    },
+  });
+});
 
-    if (!scenario) {
-      throw new AppError('Scenario not found', 404);
-    }
+// User API - Get My Scenarios
 
-    // Check if scenario is used in any invoices
-    const invoiceCount = await prisma.invoice.count({
-      where: { scenarioId: id },
-    });
+export const getMyScenarios = catchAsync(async (req, res, next) => {
+  const userId = req.user.userId;
 
-    if (invoiceCount > 0) {
-      throw new AppError(
-        'Cannot delete scenario that is used in invoices',
-        400
-      );
-    }
+  const assignments = await prisma.userScenario.findMany({
+    where: { userId },
+    include: {
+      scenario: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 
-    await prisma.scenario.delete({
-      where: { id },
-    });
-
-    res.status(204).json({
-      status: 'success',
-      data: null,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  res.status(200).json({
+    status: 'success',
+    data: {
+      scenarios: assignments.map((a) => ({
+        assignmentId: a.id,
+        scenarioId: a.scenario.id,
+        scenarioCode: a.scenario.scenarioCode,
+        scenarioDescription: a.scenario.scenarioDescription,
+        assignedAt: a.createdAt,
+      })),
+    },
+  });
+});

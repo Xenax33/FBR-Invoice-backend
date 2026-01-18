@@ -65,17 +65,22 @@ export const postInvoice = async (req, res, next) => {
       throw new AppError('Buyer not found', 404);
     }
 
-    // Get scenario information
-    const scenario = await prisma.scenario.findFirst({
+    // Get scenario information - Check if scenario is assigned to user
+    const userScenario = await prisma.userScenario.findFirst({
       where: {
-        id: scenarioId,
-        userId, // Ensure scenario belongs to current user
+        scenarioId,
+        userId, // Ensure scenario is assigned to current user
+      },
+      include: {
+        scenario: true,
       },
     });
 
-    if (!scenario) {
-      throw new AppError('Scenario not found', 404);
+    if (!userScenario) {
+      throw new AppError('Scenario not found or not assigned to you', 404);
     }
+
+    const scenario = userScenario.scenario;
 
     // Get HS codes for all items
     const hsCodeIds = items.map((item) => item.hsCodeId);
