@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // Admin APIs - Manage Global Scenarios
 
 export const createGlobalScenario = catchAsync(async (req, res, next) => {
-  const { scenarioCode, scenarioDescription } = req.body;
+  const { scenarioCode, scenarioDescription, fbrId } = req.body;
 
   // Check if scenario code already exists
   const existingScenario = await prisma.globalScenario.findUnique({
@@ -21,6 +21,7 @@ export const createGlobalScenario = catchAsync(async (req, res, next) => {
     data: {
       scenarioCode,
       scenarioDescription,
+      fbrId,
     },
   });
 
@@ -55,6 +56,15 @@ export const getAllGlobalScenarios = catchAsync(async (req, res, next) => {
       orderBy: {
         scenarioCode: 'asc',
       },
+      select: {
+        id: true,
+        scenarioCode: true,
+        scenarioDescription: true,
+        salesType: true,
+        fbrId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     }),
     prisma.globalScenario.count({ where }),
   ]);
@@ -78,6 +88,15 @@ export const getGlobalScenarioById = catchAsync(async (req, res, next) => {
 
   const scenario = await prisma.globalScenario.findUnique({
     where: { id },
+    select: {
+      id: true,
+      scenarioCode: true,
+      scenarioDescription: true,
+      salesType: true,
+      fbrId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 
   if (!scenario) {
@@ -94,7 +113,7 @@ export const getGlobalScenarioById = catchAsync(async (req, res, next) => {
 
 export const updateGlobalScenario = catchAsync(async (req, res, next) => {
   const { id } = req.params;
-  const { scenarioCode, scenarioDescription, salesType } = req.body;
+  const { scenarioCode, scenarioDescription, salesType, fbrId } = req.body;
 
   const existingScenario = await prisma.globalScenario.findUnique({
     where: { id },
@@ -120,6 +139,8 @@ export const updateGlobalScenario = catchAsync(async (req, res, next) => {
   if (scenarioDescription) data.scenarioDescription = scenarioDescription;
   // Don't trim salesType - preserve exact case sensitivity
   if (salesType !== undefined) data.salesType = salesType;
+
+  if (fbrId !== undefined) data.fbrId = fbrId;
 
   const scenario = await prisma.globalScenario.update({
     where: { id },
@@ -289,6 +310,7 @@ export const getUserAssignedScenarios = catchAsync(async (req, res, next) => {
         scenarioId: a.scenario.id,
         scenarioCode: a.scenario.scenarioCode,
         scenarioDescription: a.scenario.scenarioDescription,
+        fbrId: a.scenario.fbrId,
         assignedAt: a.createdAt,
       })),
     },
@@ -318,6 +340,7 @@ export const getMyScenarios = catchAsync(async (req, res, next) => {
         scenarioId: a.scenario.id,
         scenarioCode: a.scenario.scenarioCode,
         scenarioDescription: a.scenario.scenarioDescription,
+        fbrId: a.scenario.fbrId,
         assignedAt: a.createdAt,
       })),
     },

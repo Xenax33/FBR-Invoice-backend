@@ -13,6 +13,11 @@ export const createGlobalScenarioValidation = [
     .withMessage('Scenario description is required')
     .isLength({ min: 3, max: 500 })
     .withMessage('Scenario description must be between 3 and 500 characters'),
+  body('fbrId')
+    .notEmpty()
+    .withMessage('FBR ID is required')
+    .isInt()
+    .withMessage('FBR ID must be an integer'),
 ];
 
 export const updateGlobalScenarioValidation = [
@@ -30,6 +35,10 @@ export const updateGlobalScenarioValidation = [
     .optional()
     .isLength({ min: 1, max: 255 })
     .withMessage('Sales type must be between 1 and 255 characters'),
+  body('fbrId')
+    .optional()
+    .isInt()
+    .withMessage('FBR ID must be an integer'),
 ];
 
 export const assignScenarioValidation = [

@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const createGlobalScenario = async (req, res, next) => {
   try {
-    const { scenarioCode, scenarioDescription } = req.body;
+    const { scenarioCode, scenarioDescription, fbrId } = req.body;
 
     const existing = await prisma.globalScenario.findUnique({
       where: { scenarioCode },
@@ -15,7 +15,7 @@ export const createGlobalScenario = async (req, res, next) => {
     }
 
     const scenario = await prisma.globalScenario.create({
-      data: { scenarioCode, scenarioDescription },
+      data: { scenarioCode, scenarioDescription, fbrId },
     });
 
     res.status(201).json({ status: 'success', data: { scenario } });
@@ -39,7 +39,21 @@ export const getGlobalScenarios = async (req, res, next) => {
       : {};
 
     const [scenarios, total] = await Promise.all([
-      prisma.globalScenario.findMany({ where, skip, take: Number(limit), orderBy: { scenarioCode: 'asc' } }),
+      prisma.globalScenario.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: { scenarioCode: 'asc' },
+        select: {
+          id: true,
+          scenarioCode: true,
+          scenarioDescription: true,
+          salesType: true,
+          fbrId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
       prisma.globalScenario.count({ where }),
     ]);
 
@@ -55,13 +69,14 @@ export const getGlobalScenarios = async (req, res, next) => {
 export const updateGlobalScenario = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { scenarioCode, scenarioDescription, salesType } = req.body;
+    const { scenarioCode, scenarioDescription, salesType, fbrId } = req.body;
 
     const data = {};
     if (scenarioCode !== undefined) data.scenarioCode = scenarioCode.trim();
     if (scenarioDescription !== undefined) data.scenarioDescription = scenarioDescription.trim();
     // Don't trim salesType - preserve exact case sensitivity
     if (salesType !== undefined) data.salesType = salesType;
+    if (fbrId !== undefined) data.fbrId = fbrId;
 
     const scenario = await prisma.globalScenario.update({
       where: { id },
