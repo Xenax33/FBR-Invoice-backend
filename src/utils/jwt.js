@@ -32,3 +32,20 @@ export const verifyRefreshToken = (token) => {
     return null;
   }
 };
+
+export const generateMfaChallengeToken = (userId, email) => {
+  return jwt.sign(
+    { userId, email, purpose: 'admin-mfa' },
+    config.jwt.secret,
+    { expiresIn: config.mfa.challengeExpiresIn }
+  );
+};
+
+export const verifyMfaChallengeToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret);
+    return decoded?.purpose === 'admin-mfa' ? decoded : null;
+  } catch (error) {
+    return null;
+  }
+};

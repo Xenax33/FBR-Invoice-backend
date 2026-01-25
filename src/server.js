@@ -5,6 +5,7 @@ import { config } from './config/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import scenarioRoutes from './routes/scenarioRoutes.js';
 import hsCodeRoutes from './routes/hsCodeRoutes.js';
@@ -12,6 +13,11 @@ import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 
 const app = express();
+
+// When behind a proxy/load balancer in production, trust the proxy so req.ip is correct
+if (config.nodeEnv === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // CORS configuration - lock to production domain in production
 const allowedProdOrigins = ['https://saadtrader.pk', 'https://www.saadtrader.pk'];
@@ -57,6 +63,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/scenarios', scenarioRoutes);
 app.use('/api/v1/hs-codes', hsCodeRoutes);

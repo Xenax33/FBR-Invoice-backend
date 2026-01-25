@@ -13,4 +13,11 @@ export const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
+  mfa: {
+    issuer: process.env.MFA_ISSUER || 'FBR Invoice Admin',
+    encryptionKey: process.env.MFA_ENCRYPTION_KEY || process.env.JWT_SECRET || 'fallback-mfa-key',
+    totpWindow: parseInt(process.env.MFA_TOTP_WINDOW_STEPS || '1', 10),
+    challengeExpiresIn: process.env.MFA_CHALLENGE_EXPIRES_IN || '10m',
+    backupCodesCount: parseInt(process.env.MFA_BACKUP_CODES_COUNT || '8', 10),
+  },
 };

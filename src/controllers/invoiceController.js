@@ -139,10 +139,6 @@ export const postInvoice = async (req, res, next) => {
       ? `${FBR_SANDBOX_BASE_URL}/postinvoicedata_sb`
       : `${FBR_PRODUCTION_BASE_URL}/postinvoicedata`;
 
-    console.log('=== FBR API Request ===');
-    console.log('Endpoint:', fbrEndpoint);
-    console.log('Request Body:', JSON.stringify(fbrPayload, null, 2));
-
     const fbrResponse = await fetch(fbrEndpoint, {
       method: 'POST',
       headers: {
@@ -153,10 +149,6 @@ export const postInvoice = async (req, res, next) => {
     });
 
     const fbrResponseData = await fbrResponse.json();
-
-    console.log('=== FBR API Response ===');
-    console.log('Status:', fbrResponse.status, fbrResponse.statusText);
-    console.log('Response Body:', JSON.stringify(fbrResponseData, null, 2));
 
     // Check if FBR API call was successful
     if (!fbrResponse.ok) {

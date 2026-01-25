@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { comparePassword } from '../utils/password.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateMfaChallengeToken } from '../utils/jwt.js';
 import { AppError, catchAsync } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
@@ -24,7 +24,38 @@ export const login = catchAsync(async (req, res, next) => {
     throw new AppError('Invalid email or password', 401);
   }
 
-  // Generate tokens
+  // ADMIN MFA ENFORCEMENT: Check if user is an admin
+  if (user.role === 'ADMIN') {
+    // Remove sensitive fields from user response
+    const { password: _, mfaSecret, mfaBackupCodes, ...safeUser } = user;
+
+    // If admin doesn't have MFA enabled, force enrollment
+    if (!user.mfaEnabled) {
+      return res.status(403).json({
+        status: 'error',
+        data: {
+          requireMfaEnrollment: true,
+          userId: user.id,
+          email: user.email,
+          message: 'MFA enrollment required for admin accounts',
+        },
+      });
+    }
+
+    // If admin has MFA enabled, require verification
+    const challengeToken = generateMfaChallengeToken(user.id, user.email);
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        mfaRequired: true,
+        challengeToken,
+        user: safeUser,
+      },
+    });
+  }
+
+  // Regular users (non-admin): normal login flow
   const accessToken = generateAccessToken(user.id, user.email, user.role);
   const refreshToken = generateRefreshToken(user.id);
 
@@ -41,13 +72,13 @@ export const login = catchAsync(async (req, res, next) => {
     },
   });
 
-  // Remove password from response
-  const { password: _, ...userWithoutPassword } = user;
+  // Remove sensitive fields from response
+  const { password: _, mfaSecret, mfaBackupCodes, ...safeUser } = user;
 
   res.status(200).json({
     status: 'success',
     data: {
-      user: userWithoutPassword,
+      user: safeUser,
       accessToken,
       refreshToken,
     },
@@ -121,6 +152,7 @@ export const getProfile = catchAsync(async (req, res, next) => {
       address: true,
       ntncnic: true,
       role: true,
+      mfaEnabled: true,
       postInvoiceTokenTest: true,
       validateInvoiceTokenTest: true,
       postInvoiceToken: true,
