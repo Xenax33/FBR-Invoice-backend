@@ -624,7 +624,6 @@ export const postProductionInvoice = async (req, res, next) => {
         items: {
           create: items.map((item) => ({
             hsCodeId: item.hsCodeId,
-            hsCode: hsCodeMap[item.hsCodeId],
             productDescription: item.productDescription,
             rate: item.rate,
             uoM: item.uoM,
