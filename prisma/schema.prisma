@@ -139,7 +139,7 @@ model Invoice {
   id                      String        @id @default(uuid())
   userId                  String        @map("user_id")
   buyerId                 String        @map("buyer_id")
-  scenarioId              String        @map("scenario_id")
+  scenarioId              String?       @map("scenario_id")
   invoiceType             String        @map("invoice_type")
   invoiceDate             DateTime      @map("invoice_date") @db.Date
   invoiceRefNo            String?       @map("invoice_ref_no")
@@ -152,7 +152,7 @@ model Invoice {
   // Relations
   user                    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   buyer                   Buyer          @relation(fields: [buyerId], references: [id], onDelete: Restrict)
-  scenario                GlobalScenario @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  scenario                GlobalScenario? @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
   items                   InvoiceItem[]
 
   @@map("invoices")
@@ -176,6 +176,7 @@ model InvoiceItem {
   sroScheduleNo                 String?         @map("sro_schedule_no")
   fedPayable                    Decimal         @map("fed_payable") @db.Decimal(15, 2)
   discount                      Decimal         @db.Decimal(15, 2)
+  saleType                      String?         @map("sale_type")
   sroItemSerialNo               String?         @map("sro_item_serial_no")
   createdAt                     DateTime        @default(now()) @map("created_at")
   updatedAt                     DateTime        @updatedAt @map("updated_at")
