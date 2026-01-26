@@ -566,6 +566,13 @@ export const postProductionInvoice = async (req, res, next) => {
     // Call FBR Production API
     let fbrResponse;
     try {
+      console.log('========================================');
+      console.log('📤 SENDING TO FBR PRODUCTION API');
+      console.log('Endpoint: https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata');
+      console.log('User:', user.businessName, '(', user.ntncnic, ')');
+      console.log('Payload:', JSON.stringify(fbrPayload, null, 2));
+      console.log('========================================');
+
       const response = await fetch('https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata', {
         method: 'POST',
         headers: {
@@ -577,6 +584,12 @@ export const postProductionInvoice = async (req, res, next) => {
 
       fbrResponse = await response.json();
 
+      console.log('========================================');
+      console.log('📥 RECEIVED FROM FBR PRODUCTION API');
+      console.log('Status Code:', response.status);
+      console.log('Response:', JSON.stringify(fbrResponse, null, 2));
+      console.log('========================================');
+
       if (!response.ok) {
         throw new AppError(
           `FBR API Error: ${fbrResponse.message || 'Failed to post invoice'}`,
@@ -584,6 +597,11 @@ export const postProductionInvoice = async (req, res, next) => {
         );
       }
     } catch (error) {
+      console.log('========================================');
+      console.log('❌ FBR PRODUCTION API ERROR');
+      console.log('Error:', error.message);
+      console.log('========================================');
+      
       if (error instanceof AppError) {
         throw error;
       }
