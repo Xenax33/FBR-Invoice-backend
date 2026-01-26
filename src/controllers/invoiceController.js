@@ -507,15 +507,16 @@ export const postProductionInvoice = async (req, res, next) => {
     }
 
     // Validate HS codes exist and belong to user
-    const hsCodeIds = items.map((item) => item.hsCodeId);
+    // Get unique HS code IDs to handle duplicate items with same HS code
+    const uniqueHsCodeIds = [...new Set(items.map((item) => item.hsCodeId))];
     const hsCodes = await prisma.hsCode.findMany({
       where: {
-        id: { in: hsCodeIds },
+        id: { in: uniqueHsCodeIds },
         userId,
       },
     });
 
-    if (hsCodes.length !== hsCodeIds.length) {
+    if (hsCodes.length !== uniqueHsCodeIds.length) {
       throw new AppError('One or more HS codes not found', 404);
     }
 
